@@ -11,16 +11,37 @@ def initialize_database():
     connection = get_connection()
 
     connection.execute("""
-        CREATE TABLE IF NOT EXISTS users (
+        CREATE TABLE users (
             telegram_id INTEGER PRIMARY KEY,
             subscribed INTEGER NOT NULL DEFAULT 1,
             report_time TEXT NOT NULL DEFAULT '07:00',
-            timezone TEXT NOT NULL DEFAULT 'Asia/Singapore'
-        )
+            timezone TEXT NOT NULL DEFAULT 'Asia/Singapore',
+            latitude REAL,
+            longitude REAL,
+            last_sent_date TEXT
+        );
     """)
 
     connection.commit()
     connection.close()
+
+def mark_report_sent(telegram_id, sent_date):
+    connection = get_connection()
+
+    try:
+        connection.execute(
+            """
+            UPDATE users
+            SET last_sent_date = ?
+            WHERE telegram_id = ?
+            """,
+            (sent_date, telegram_id)
+        )
+
+        connection.commit()
+
+    finally:
+        connection.close()
 
 def subscribe_user(telegram_id):
 
