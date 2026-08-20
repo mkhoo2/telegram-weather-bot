@@ -2,7 +2,6 @@ from fastapi import FastAPI, Request
 from telegram import answer_callback_query, send_message
 from database import initialize_database, subscribe_user, unsubscribe_user, set_report_time
 from datetime import datetime
-from scheduler import scheduler
 
 initialize_database()
 app = FastAPI()
