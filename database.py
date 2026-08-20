@@ -87,14 +87,30 @@ def get_subscribed_users():
 
     connection = get_connection()
 
-    cursor = connection.execute("""
-        SELECT telegram_id, report_time, timezone
-        FROM users
-        WHERE subscribed = 1
-    """)
+    try:
+        cursor = connection.execute("""
+            SELECT
+                telegram_id,
+                report_time,
+                timezone,
+                latitude,
+                longitude,
+                last_sent_date
+            FROM users
+            WHERE subscribed = 1
+        """)
 
-    users = cursor.fetchall()
+        return [
+            {
+                "telegram_id": row[0],
+                "report_time": row[1],
+                "timezone": row[2],
+                "latitude": row[3],
+                "longitude": row[4],
+                "last_sent_date": row[5]
+            }
+            for row in cursor.fetchall()
+        ]
 
-    connection.close()
-
-    return users
+    finally:
+        connection.close()
