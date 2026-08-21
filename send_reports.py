@@ -2,7 +2,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from database import get_subscribed_users, mark_report_sent
-from weather import get_weather
+from weather import format_current_weather, get_weather
 from telegram import send_message
 
 
@@ -27,17 +27,6 @@ def is_report_due(user):
 
     return True
 
-
-def create_weather_report(weather):
-
-    return (
-        f"🌤️ Weather Report\n\n"
-        f"🌡️ Temperature: {weather['temperature']}°C\n"
-        f"💧 Humidity: {weather['humidity']}%\n"
-        f"💨 Wind: {weather['wind_speed']} km/h"
-    )
-
-
 def process_user(user):
 
     if not is_report_due(user):
@@ -52,7 +41,7 @@ def process_user(user):
         user["longitude"]
     )
 
-    report = create_weather_report(weather)
+    report = format_current_weather(weather)
 
     send_message(
         user["telegram_id"],

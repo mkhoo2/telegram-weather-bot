@@ -1,93 +1,115 @@
-import sqlite3
+import os
+import psycopg
 
-DATABASE = "weather_bot.db"
+DATABASE_URL = os.environ["DATABASE_URL"]
 
 
 def get_connection():
-    return sqlite3.connect(DATABASE)
+    return psycopg.connect(DATABASE_URL)
+
 
 def initialize_database():
 
-    connection = get_connection()
+    with get_connection() as connection:
 
-    connection.execute("""
-        CREATE TABLE users (
-            telegram_id INTEGER PRIMARY KEY,
-            subscribed INTEGER NOT NULL DEFAULT 1,
-            report_time TEXT NOT NULL DEFAULT '07:00',
-            timezone TEXT NOT NULL DEFAULT 'Asia/Singapore',
-            latitude REAL,
-            longitude REAL,
-            last_sent_date TEXT
-        );
-    """)
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                telegram_id BIGINT PRIMARY KEY,
+                subscribed BOOLEAN NOT NULL DEFAULT TRUE,
+                report_time TEXT NOT NULL DEFAULT '07:00',
+                timezone TEXT NOT NULL DEFAULT 'Asia/Singapore',
+                latitude DOUBLE PRECISION NOT NULL DEFAULT 1.3521,
+                longitude DOUBLE PRECISION NOT NULL DEFAULT 103.8198,
+                last_sent_date TEXT
+            );
+        """)
 
-    connection.commit()
-    connection.close()
+
+def get_user(telegram_id):
+
+    with get_connection() as connection:
+
+        cursor = connection.execute("""
+            SELECT
+                telegram_id,
+                subscribed,
+                report_time,
+                timezone,
+                latitude,
+                longitude,
+                last_sent_date
+            FROM users
+            WHERE telegram_id = %s
+        """, (telegram_id,))
+
+        row = cursor.fetchone()
+
+        if row is None:
+            return None
+
+        return {
+            "telegram_id": row[0],
+            "subscribed": row[1],
+            "report_time": row[2],
+            "timezone": row[3],
+            "latitude": row[4],
+            "longitude": row[5],
+            "last_sent_date": row[6]
+        }
+
 
 def mark_report_sent(telegram_id, sent_date):
-    connection = get_connection()
 
-    try:
+    with get_connection() as connection:
+
         connection.execute(
             """
             UPDATE users
-            SET last_sent_date = ?
-            WHERE telegram_id = ?
+            SET last_sent_date = %s
+            WHERE telegram_id = %s
             """,
             (sent_date, telegram_id)
         )
 
-        connection.commit()
-
-    finally:
-        connection.close()
 
 def subscribe_user(telegram_id):
 
-    connection = get_connection()
+    with get_connection() as connection:
 
-    connection.execute("""
-        INSERT INTO users (telegram_id)
-        VALUES (?)
-        ON CONFLICT(telegram_id)
-        DO UPDATE SET subscribed = 1
-    """, (telegram_id,))
+        connection.execute("""
+            INSERT INTO users (telegram_id)
+            VALUES (%s)
+            ON CONFLICT (telegram_id)
+            DO UPDATE SET subscribed = TRUE
+        """, (telegram_id,))
 
-    connection.commit()
-    connection.close()
 
 def unsubscribe_user(telegram_id):
 
-    connection = get_connection()
+    with get_connection() as connection:
 
-    connection.execute("""
-        UPDATE users
-        SET subscribed = 0
-        WHERE telegram_id = ?
-    """, (telegram_id,))
+        connection.execute("""
+            UPDATE users
+            SET subscribed = FALSE
+            WHERE telegram_id = %s
+        """, (telegram_id,))
 
-    connection.commit()
-    connection.close()
 
 def set_report_time(telegram_id, report_time):
 
-    connection = get_connection()
+    with get_connection() as connection:
 
-    connection.execute("""
-        UPDATE users
-        SET report_time = ?
-        WHERE telegram_id = ?
-    """, (report_time, telegram_id))
+        connection.execute("""
+            UPDATE users
+            SET report_time = %s
+            WHERE telegram_id = %s
+        """, (report_time, telegram_id))
 
-    connection.commit()
-    connection.close()
 
 def get_subscribed_users():
 
-    connection = get_connection()
+    with get_connection() as connection:
 
-    try:
         cursor = connection.execute("""
             SELECT
                 telegram_id,
@@ -97,7 +119,7 @@ def get_subscribed_users():
                 longitude,
                 last_sent_date
             FROM users
-            WHERE subscribed = 1
+            WHERE subscribed = TRUE
         """)
 
         return [
@@ -111,6 +133,3 @@ def get_subscribed_users():
             }
             for row in cursor.fetchall()
         ]
-
-    finally:
-        connection.close()

@@ -1,7 +1,9 @@
 from fastapi import FastAPI, Request
 from telegram import answer_callback_query, send_message
-from database import initialize_database, subscribe_user, unsubscribe_user, set_report_time
+from database import get_user, initialize_database, subscribe_user, unsubscribe_user, set_report_time
 from datetime import datetime
+
+from weather import format_current_weather, get_weather
 
 initialize_database()
 app = FastAPI()
@@ -110,6 +112,21 @@ async def telegram_webhook(request: Request):
         text = message.get("text", "")
 
         # Handle normal messages here
+        if text == "/start":
+
+            subscribe_user(chat_id)
+
+            show_main_menu(chat_id)
+
+        elif text == "/stop":
+
+            unsubscribe_user(chat_id)
+
+            send_message(
+                chat_id,
+                "🔕 You have been unsubscribed."
+            )
+
 
     elif "callback_query" in update:
 
@@ -125,10 +142,37 @@ async def telegram_webhook(request: Request):
 
         if data == "weather":
 
-            send_message(
-                chat_id,
-                "Getting today's weather... 🌤️"
-            )
+            try:
+
+                user = get_user(chat_id)
+
+                if user is None:
+                    send_message(
+                        chat_id,
+                        "❌ I couldn't find your settings."
+                    )
+                    return {"ok": True}
+
+                weather = get_weather(
+                    user["latitude"],
+                    user["longitude"]
+                )
+
+                report = format_current_weather(weather)
+
+                send_message(
+                    chat_id,
+                    report
+                )
+
+            except Exception as e:
+
+                print(f"Weather error: {e}")
+
+                send_message(
+                    chat_id,
+                    "❌ Sorry, I couldn't retrieve the weather right now."
+                )
 
         elif data == "set_time":
 
@@ -159,20 +203,4 @@ async def telegram_webhook(request: Request):
         elif data == "main_menu":
 
             show_main_menu(chat_id)
-
-    if text == "/start":
-
-        subscribe_user(chat_id)
-
-        show_main_menu(chat_id)
-
-    elif text == "/stop":
-
-        unsubscribe_user(chat_id)
-
-        send_message(
-            chat_id,
-            "🔕 You have been unsubscribed."
-        )
-
     return {"ok": True}
