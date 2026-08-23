@@ -2,12 +2,11 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from database import get_subscribed_users, mark_report_sent
-from weather import format_current_weather, get_weather
+from weather import format_singapore_weather, get_singapore_weather
 from telegram import send_message
 
 
 def is_report_due(user):
-
     timezone = user["timezone"]
     report_time = user["report_time"]
     last_sent_date = user["last_sent_date"]
@@ -27,25 +26,18 @@ def is_report_due(user):
 
     return True
 
-def process_user(user):
 
+def process_user(user, weather):
     if not is_report_due(user):
         return
 
-    print(
-        f"Sending report to {user['telegram_id']}"
-    )
+    print(f"Sending report to {user['telegram_id']}")
 
-    weather = get_weather(
-        user["latitude"],
-        user["longitude"]
-    )
-
-    report = format_current_weather(weather)
+    report = format_singapore_weather(weather)
 
     send_message(
         user["telegram_id"],
-        report
+        report,
     )
 
     today = datetime.now(
@@ -54,23 +46,24 @@ def process_user(user):
 
     mark_report_sent(
         user["telegram_id"],
-        today
+        today,
     )
 
 
 def main():
-
     users = get_subscribed_users()
 
     print(f"Checking {len(users)} users...")
 
-    for user in users:
+    # Singapore weather is identical for every subscriber, so fetch it once
+    # instead of making one API request per user.
+    weather = get_singapore_weather()
 
+    for user in users:
         try:
-            process_user(user)
+            process_user(user, weather)
 
         except Exception as e:
-
             print(
                 f"Failed to process "
                 f"{user['telegram_id']}: {e}"
