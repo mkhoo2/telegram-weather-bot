@@ -7,6 +7,7 @@ from weather import format_current_weather, get_weather
 
 initialize_database()
 app = FastAPI()
+awaiting_custom_time = set()
 
 def show_main_menu(chat_id):
 
@@ -112,7 +113,26 @@ async def telegram_webhook(request: Request):
         text = message.get("text", "")
 
         # Handle normal messages here
-        if text == "/start":
+        if chat_id in awaiting_custom_time and not text.startswith("/"):
+
+            selected_time = text.strip()
+
+            if not valid_time(selected_time):
+                send_message(
+                    chat_id,
+                    "❌ Invalid time. Please use 24-hour format, for example 07:30."
+                )
+                return {"ok": True}
+
+            set_report_time(chat_id, selected_time)
+            awaiting_custom_time.discard(chat_id)
+
+            send_message(
+                chat_id,
+                f"✅ Daily weather report set to {selected_time}."
+            )
+
+        elif text == "/start":
 
             subscribe_user(chat_id)
 
@@ -178,6 +198,16 @@ async def telegram_webhook(request: Request):
 
             show_time_menu(chat_id)
 
+        elif data == "time:custom":
+
+            awaiting_custom_time.add(chat_id)
+
+            send_message(
+                chat_id,
+                "✏️ Enter your desired time.\n\n"
+                "Example: 07:30"
+            )
+
         elif data.startswith("time:"):
 
             selected_time = data.removeprefix("time:")
@@ -190,14 +220,6 @@ async def telegram_webhook(request: Request):
             send_message(
                 chat_id,
                 f"✅ Daily weather report set to {selected_time}."
-            )
-
-        elif data == "time:custom":
-
-            send_message(
-                chat_id,
-                "✏️ Enter your desired time.\n\n"
-                "Example: 07:30"
             )
 
         elif data == "main_menu":
