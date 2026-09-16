@@ -146,6 +146,8 @@ async def telegram_webhook(request: Request):
                 chat_id,
                 "🔕 You have been unsubscribed."
             )
+        else:
+            show_main_menu(chat_id)
 
 
     elif "callback_query" in update:

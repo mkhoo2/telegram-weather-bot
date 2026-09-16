@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 # NEA / data.gov.sg real-time weather APIs
 TWO_HOUR_URL = "https://api-open.data.gov.sg/v2/real-time/api/two-hr-forecast"
 TWENTY_FOUR_HOUR_URL = "https://api-open.data.gov.sg/v2/real-time/api/twenty-four-hr-forecast"
+PSI_URL = "https://api-open.data.gov.sg/v2/real-time/api/psi"
 
 TIMEOUT = 10
 SINGAPORE_TZ = ZoneInfo("Asia/Singapore")
@@ -57,6 +58,11 @@ def get_24hour_weather():
     return _get_json(TWENTY_FOUR_HOUR_URL)
 
 
+def get_psi_weather():
+    """Return the latest NEA PSI update."""
+    return _get_json(PSI_URL)
+
+
 def _region_from_area(area):
     for region, areas in REGION_AREAS.items():
         if area in areas:
@@ -107,6 +113,49 @@ def _get_latest_24hour_record(data):
     return records[-1]
 
 
+def _psi_status(value):
+    if value is None:
+        return "Unavailable"
+    if value <= 50:
+        return "Good"
+    if value <= 100:
+        return "Moderate"
+    if value <= 200:
+        return "Unhealthy"
+    if value <= 300:
+        return "Very Unhealthy"
+    return "Hazardous"
+
+
+def _summarize_psi(data):
+    """Extract the regional 24-hour PSI values with per-region status."""
+    items = data.get("items", [])
+    if not items:
+        return {
+            "timestamp": None,
+            "updated_timestamp": None,
+            "regions": {},
+        }
+
+    latest = items[-1]
+    readings = latest.get("readings", {})
+    psi = readings.get("psi_twenty_four_hourly", {})
+
+    regions = {
+        region.title(): {
+            "value": value,
+            "status": _psi_status(value),
+        }
+        for region, value in psi.items()
+    }
+
+    return {
+        "timestamp": latest.get("timestamp"),
+        "updated_timestamp": latest.get("updatedTimestamp"),
+        "regions": regions,
+    }
+
+
 def _summarize_24hour(data):
     """Extract the regional 24-hour forecast and time periods."""
     record = _get_latest_24hour_record(data)
@@ -138,13 +187,15 @@ def _summarize_24hour(data):
 
 
 def get_singapore_weather():
-    """Fetch and combine NEA's 2-hour and 24-hour Singapore forecasts."""
+    """Fetch and combine NEA's 2-hour, 24-hour, and PSI Singapore updates."""
     two_hour = _summarize_2hour(get_2hour_weather())
     twenty_four_hour = _summarize_24hour(get_24hour_weather())
+    psi = _summarize_psi(get_psi_weather())
 
     return {
         "two_hour": two_hour,
         "twenty_four_hour": twenty_four_hour,
+        "psi": psi,
     }
 
 
@@ -175,6 +226,7 @@ def format_singapore_weather(weather):
     """Format the combined forecast for Telegram."""
     two_hour = weather["two_hour"]
     twenty_four = weather["twenty_four_hour"]
+    psi = weather.get("psi", {})
 
     valid_text = two_hour.get("valid_period", {}).get("text", "Next 2 hours")
     updated = two_hour.get("update_timestamp")
@@ -233,6 +285,17 @@ def format_singapore_weather(weather):
             if direction:
                 wind_text += f", {direction}"
             lines.append(wind_text)
+
+    psi_regions = psi.get("regions", {})
+    if psi_regions:
+        lines.extend(["", "🌫️ PSI (24-hr)"])
+        for region in ("North", "South", "East", "West", "Central"):
+            region_data = psi_regions.get(region)
+            if not region_data:
+                continue
+            value = region_data.get("value", "Unavailable")
+            status = region_data.get("status", "Unavailable")
+            lines.append(f"{region}: {value} ({status})")
 
     return "\n".join(lines)
 
