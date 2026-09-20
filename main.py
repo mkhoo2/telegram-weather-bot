@@ -171,7 +171,7 @@ async def telegram_webhook(request: Request):
                 if user is None:
                     send_message(
                         chat_id,
-                        "❌ I couldn't find your settings."
+                        "❌ I couldn't find your settings. Please use /start to set up."
                     )
                     return {"ok": True}
 
