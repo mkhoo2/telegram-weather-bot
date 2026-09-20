@@ -10,11 +10,12 @@ ngrok http 8000
 ```
 
 Set the url to telegram hook
-```
+```code
 https://api.telegram.org/botYOUR_TOKEN/setWebhook?url=<url>
+```
 
 Run local postgres using docker
-```
+```code
 docker run --name postgres-local \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=password \
