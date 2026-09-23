@@ -1,4 +1,5 @@
 import os
+from urllib import response
 import requests
 
 from dotenv import load_dotenv
@@ -45,6 +46,9 @@ def send_message(chat_id, text, reply_markup=None):
         json=data,
         timeout=10
     )
+
+    print("Status:", response.status_code)
+    print("Response:", response.text)
 
     response.raise_for_status()
 
