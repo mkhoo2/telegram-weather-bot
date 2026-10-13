@@ -1,10 +1,9 @@
 name: Send Weather Reports
 
 on:
-  schedule:
-    - cron: '4,19,34,49 * * * *'
-
-  workflow_dispatch:
+  repository_dispatch:
+    types: [cron_weather_trigger] # This is the unique custom event name
+  workflow_dispatch: # Keeps the manual run button working in the GitHub UI
 
 jobs:
   send-weather:
