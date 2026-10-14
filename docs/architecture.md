@@ -6,13 +6,13 @@ This project is a Telegram bot that serves Singapore weather reports and lets su
 
 ## Components and entry points
 
-- [`main.py`](../main.py) exposes `GET /` as a simple health response and `POST /telegram/webhook` for Telegram updates. It handles `/start`, `/stop`, inline-keyboard callbacks, current weather requests, and custom report-time input.
+- [`main.py`](../main.py) exposes `GET /` as a simple health response, `POST /telegram/webhook` for Telegram updates, and authenticated `POST /reports/send` to trigger the scheduled report batch. It handles `/start`, `/stop`, inline-keyboard callbacks, current weather requests, and custom report-time input.
 - [`telegram.py`](../telegram.py) sends messages and acknowledges callback queries through the Telegram Bot API.
 - [`database.py`](../database.py) loads environment configuration, opens PostgreSQL connections, creates the `users` table if absent, and provides user subscription, preference, and report-state operations.
 - [`weather.py`](../weather.py) calls the NEA/data.gov.sg two-hour forecast, 24-hour forecast, PSI, and PM2.5 endpoints; summarizes the payloads by region; and formats a Telegram report. The compatibility functions `get_weather` and `format_current_weather` delegate to the Singapore-specific implementation.
 - [`send_reports.py`](../send_reports.py) is the report batch entry point. It loads subscribed users, fetches shared Singapore weather once per run, checks each user's local time and last-send date, sends due reports, and records the send date.
 - [`scheduler.py`](../scheduler.py) defines a standalone APScheduler loop. Repository references do not show it being started by the FastAPI entry point or used by the Actions workflow. Its imports/data handling do not align with the current `weather.py` and `database.py` interfaces; verify or repair it before relying on it.
-- [`.github/workflows/weather.yaml`](../.github/workflows/weather.yaml) installs the requirements and runs `send_reports.py` on a 15-minute cron schedule or manual dispatch.
+- [`.github/workflows/weather.yaml`](../.github/workflows/weather.yaml) calls the deployed API's authenticated `POST /reports/send` endpoint on a 15-minute cron schedule or manual dispatch.
 
 ## Data and request flows
 
@@ -37,12 +37,13 @@ Connections use `DATABASE_URL`. Psycopg connection context managers are used for
 
 ### Scheduled reports
 
-The Actions workflow uses the repository's current batch implementation, not `scheduler.py`. `send_reports.py` checks `last_sent_date` to avoid sending more than once per local day and updates it after a successful send. Workflow credentials are provided from the GitHub Actions secrets named `TELEGRAM_BOT_TOKEN` and `DATABASE_URL`.
+The report endpoint delegates to the repository's current batch implementation, not `scheduler.py`. `send_reports.py` checks `last_sent_date` to avoid sending more than once per local day and updates it after a successful send. The deployed API requires `TELEGRAM_BOT_TOKEN`, `DATABASE_URL`, and `REPORTS_API_TOKEN`. The workflow uses GitHub Actions secrets `REPORTS_API_URL` (the full endpoint URL) and `REPORTS_API_TOKEN`; the latter must match the deployed API's token.
 
 ## Configuration and local development
 
 - `TELEGRAM_BOT_TOKEN`: Telegram Bot API credential.
 - `DATABASE_URL`: PostgreSQL connection string.
+- `REPORTS_API_TOKEN`: shared bearer token required by `POST /reports/send`.
 
 The modules load `.env` where appropriate through `python-dotenv`; actual values must remain local or in GitHub Actions secrets. [`README.md`](../README.md) documents `uvicorn main:app --reload`, ngrok/webhook setup, and an example local PostgreSQL container.
 
@@ -55,4 +56,4 @@ The modules load `.env` where appropriate through `python-dotenv`; actual values
 
 ## Testing and deployment
 
-No test files, test runner configuration, linter, or build configuration are present in the tracked repository. Dependencies are listed in [`requirements.txt`](../requirements.txt). Local API startup instructions are in the README. Scheduled batch deployment is defined by GitHub Actions and requires the two repository secrets listed above.
+No test files, test runner configuration, linter, or build configuration are present in the tracked repository. Dependencies are listed in [`requirements.txt`](../requirements.txt). Local API startup instructions are in the README. Scheduled batch triggering is defined by GitHub Actions and requires the `REPORTS_API_URL` and `REPORTS_API_TOKEN` repository secrets.

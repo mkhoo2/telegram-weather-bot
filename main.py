@@ -1,8 +1,12 @@
-from fastapi import FastAPI, Request
+import hmac
+import os
+
+from fastapi import FastAPI, Header, HTTPException, Request
 from telegram import answer_callback_query, send_message
 from database import get_user, initialize_database, subscribe_user, unsubscribe_user, set_report_time
 from datetime import datetime
 
+from send_reports import main as send_reports
 from weather import format_current_weather, get_weather
 
 initialize_database()
@@ -87,6 +91,24 @@ def show_time_menu(chat_id):
 @app.get("/")
 def home():
     return {"status": "ok"}
+
+@app.post("/reports/send")
+def send_reports_endpoint(authorization: str | None = Header(default=None)):
+    expected_token = os.getenv("REPORTS_API_TOKEN")
+    if not expected_token:
+        raise HTTPException(
+            status_code=503,
+            detail="Report endpoint authentication is not configured.",
+        )
+
+    if not authorization or not hmac.compare_digest(
+        authorization,
+        f"Bearer {expected_token}",
+    ):
+        raise HTTPException(status_code=401, detail="Unauthorized.")
+
+    send_reports()
+    return {"ok": True}
 
 def valid_time(value):
 

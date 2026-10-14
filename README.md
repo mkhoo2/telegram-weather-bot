@@ -14,6 +14,13 @@ Set the url to telegram hook
 https://api.telegram.org/botYOUR_TOKEN/setWebhook?url=<url>
 ```
 
+Configure the deployed API with `TELEGRAM_BOT_TOKEN`, `DATABASE_URL`, and
+`REPORTS_API_TOKEN`. Add these GitHub Actions repository secrets to trigger
+scheduled reports:
+
+- `REPORTS_API_URL`: the full HTTPS URL of the deployed `POST /reports/send` endpoint.
+- `REPORTS_API_TOKEN`: the same bearer token configured on the API.
+
 Run local postgres using docker
 ```code
 docker run --name postgres-local \
@@ -28,4 +35,5 @@ env file
 ```code
 TELEGRAM_BOT_TOKEN=<token>
 DATABASE_URL=<url>
+REPORTS_API_TOKEN=<secret>
 ```

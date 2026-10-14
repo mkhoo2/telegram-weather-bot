@@ -27,4 +27,4 @@ This repository is a Python Telegram bot for Singapore weather. It uses FastAPI 
 
 - Run the API with `uvicorn main:app --reload` (see `README.md` for local PostgreSQL and webhook setup).
 - Set `TELEGRAM_BOT_TOKEN` and `DATABASE_URL` in the environment; local `.env` loading is used by the Telegram and database modules. Never read, print, or commit local secrets.
-- GitHub Actions runs `python send_reports.py` on its configured schedule and on manual dispatch.
+- GitHub Actions calls the configured `POST /reports/send` API endpoint on its configured schedule and on manual dispatch.

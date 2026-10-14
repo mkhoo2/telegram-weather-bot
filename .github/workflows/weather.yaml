@@ -10,21 +10,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-
       - name: Send weather reports
         run: |
-          python send_reports.py
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer $REPORTS_API_TOKEN" \
+            "$REPORTS_API_URL"
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REPORTS_API_URL: ${{ secrets.REPORTS_API_URL }}
+          REPORTS_API_TOKEN: ${{ secrets.REPORTS_API_TOKEN }}
