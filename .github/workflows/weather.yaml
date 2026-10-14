@@ -13,6 +13,7 @@ jobs:
       - name: Send weather reports
         run: |
           curl --fail-with-body --silent --show-error \
+            --retry 6 --retry-delay 15 --retry-max-time 180 \
             --request POST \
             --header "Authorization: Bearer $REPORTS_API_TOKEN" \
             "$REPORTS_API_URL"
